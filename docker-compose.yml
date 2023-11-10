@@ -1,0 +1,99 @@
+version: "3"
+
+services:
+  
+  master:
+    image: redis
+    container_name: master
+    restart: always
+    command: redis-server --port 6379 --requirepass test@dbuser2018 --protected-mode no --daemonize no
+    ports:
+      - 6379:6379
+    networks:
+      sentinel-master:
+        ipv4_address: 172.33.0.2
+
+  slave1:
+    image: redis
+    container_name: slave1
+    restart: always
+    command: redis-server --slaveof 172.33.0.2 6379 --port 6379 --requirepass test@dbuser2018 --masterauth test@dbuser2018 --protected-mode no --daemonize no
+    ports:
+      - 6380:6379
+    depends_on:
+      - master
+    networks:
+      sentinel-master:
+        ipv4_address: 172.33.0.3
+
+  slave2:
+    image: redis
+    container_name: slave2
+    restart: always
+    command: redis-server --slaveof 172.33.0.2 6379 --port 6379 --requirepass test@dbuser2018 --masterauth test@dbuser2018 --protected-mode no --daemonize no
+    ports:
+      - 6381:6379
+    depends_on:
+      - master
+    networks:
+      sentinel-master:
+        ipv4_address: 172.33.0.4
+
+  sentinel1:
+    image: redis ## 镜像
+    container_name: redis-sentinel-1
+    restart: always
+    command: redis-sentinel /usr/local/etc/redis/sentinel.conf
+    ports:
+      - 26379:26379
+    volumes:
+      - './sentinel.conf:/usr/local/etc/redis/sentinel.conf'
+    depends_on:
+      - master
+      - slave1
+      - slave2
+    networks:
+      sentinel-master:
+        ipv4_address: 172.33.0.5
+        
+    
+  sentinel2:
+    image: redis ## 镜像
+    container_name: redis-sentinel-2
+    restart: always
+    ports:
+      - '26380:26379'
+    command: redis-sentinel /usr/local/etc/redis/sentinel.conf
+    volumes:
+      - './sentinel2.conf:/usr/local/etc/redis/sentinel.conf'
+    depends_on:
+      - master
+      - slave1
+      - slave2
+    networks:
+      sentinel-master:
+        ipv4_address: 172.33.0.6
+
+  sentinel3:
+    image: redis ## 镜像
+    container_name: redis-sentinel-3
+    restart: always
+    ports:
+      - '26381:26379'
+    command: redis-sentinel /usr/local/etc/redis/sentinel.conf
+    volumes:
+      - ./sentinel3.conf:/usr/local/etc/redis/sentinel.conf
+    depends_on:
+      - master
+      - slave1
+      - slave2
+    networks:
+      sentinel-master:
+        ipv4_address: 172.33.0.7
+
+networks:
+  sentinel-master:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.33.0.0/16
